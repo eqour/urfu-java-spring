@@ -1,4 +1,4 @@
-package ru.eqour.spring.lab2.controller;
+package ru.eqour.spring.secondservice.controller;
 
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -9,14 +9,14 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import ru.eqour.spring.lab2.exception.UnsupportedCodeException;
-import ru.eqour.spring.lab2.exception.ValidationFailedException;
-import ru.eqour.spring.lab2.model.*;
-import ru.eqour.spring.lab2.service.ModifyRequestService;
-import ru.eqour.spring.lab2.service.ModifyResponseService;
-import ru.eqour.spring.lab2.service.ValidationService;
-import ru.eqour.spring.lab2.util.DateTimeUtil;
+import ru.eqour.spring.secondservice.exception.UnsupportedCodeException;
+import ru.eqour.spring.secondservice.exception.ValidationFailedException;
+import ru.eqour.spring.secondservice.model.*;
+import ru.eqour.spring.secondservice.service.ModifyResponseService;
+import ru.eqour.spring.secondservice.service.ValidationService;
+import ru.eqour.spring.secondservice.util.DateTimeUtil;
 
+import java.text.ParseException;
 import java.util.Date;
 
 @Slf4j
@@ -25,15 +25,11 @@ public class MyController {
 
     private final ValidationService validationService;
     private final ModifyResponseService modifyResponseService;
-    private final ModifyRequestService modifyRequestService;
 
     public MyController(ValidationService validationService,
-                        @Qualifier("modifyCompositeRequestService") ModifyRequestService modifyRequestService,
-                        @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService
-    ) {
+                        @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService) {
         this.validationService = validationService;
         this.modifyResponseService = modifyResponseService;
-        this.modifyRequestService = modifyRequestService;
     }
 
     @PostMapping("/feedback")
@@ -74,9 +70,18 @@ public class MyController {
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        Response modifiedResponse = modifyResponseService.modify(response);
-        modifyRequestService.modify(request);
+        try {
+            Date requestDate = DateTimeUtil.getCustomFormat().parse(request.getSystemTime());
+            Date now = new Date();
+            log.info("elapsed time: " + ((now.getTime() - requestDate.getTime()) / 1000.0) + " seconds");
+        } catch (ParseException e) {
+            response.setCode(Codes.FAILED);
+            response.setErrorCode(ErrorCodes.UNKNOWN_EXCEPTION);
+            response.setErrorMessage(ErrorMessages.UNKNOWN);
+            log.info("add response error data: {}", response);
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
 
-        return ResponseEntity.ok(modifiedResponse);
+        return ResponseEntity.ok(modifyResponseService.modify(response));
     }
 }

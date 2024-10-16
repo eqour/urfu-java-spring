@@ -1,16 +1,17 @@
-package ru.eqour.spring.lab2.model;
+package ru.eqour.spring.secondservice.model;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
-public enum Systems {
-    ERP("ERP"),
-    CRM("CRM"),
-    WMS("WMS"),
-    FIRST_SERVICE("service-1");
+public enum ErrorCodes {
+
+    EMPTY(""),
+    VALIDATION_EXCEPTION("ValidationException"),
+    UNSUPPORTED_EXCEPTION("UnsupportedException"),
+    UNKNOWN_EXCEPTION("UnknownException");
 
     private final String name;
 
-    Systems(String name) {
+    ErrorCodes(String name) {
         this.name = name;
     }
 
