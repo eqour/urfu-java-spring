@@ -12,11 +12,11 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.eqour.spring.lab2.exception.UnsupportedCodeException;
 import ru.eqour.spring.lab2.exception.ValidationFailedException;
 import ru.eqour.spring.lab2.model.*;
-import ru.eqour.spring.lab2.service.ModifyRequestService;
-import ru.eqour.spring.lab2.service.ModifyResponseService;
-import ru.eqour.spring.lab2.service.ValidationService;
+import ru.eqour.spring.lab2.service.*;
 import ru.eqour.spring.lab2.util.DateTimeUtil;
 
+import java.time.Year;
+import java.util.Calendar;
 import java.util.Date;
 
 @Slf4j
@@ -26,14 +26,20 @@ public class MyController {
     private final ValidationService validationService;
     private final ModifyResponseService modifyResponseService;
     private final ModifyRequestService modifyRequestService;
+    private final AnnualBonusService annualBonusService;
+    private final QuarterlyBonusService quarterlyBonusService;
 
     public MyController(ValidationService validationService,
-                        @Qualifier("modifyCompositeRequestService") ModifyRequestService modifyRequestService,
-                        @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService
+                        @Qualifier("modifySystemTimeRequestService") ModifyRequestService modifyRequestService,
+                        @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService,
+                        AnnualBonusService annualBonusService,
+                        QuarterlyBonusService quarterlyBonusService
     ) {
         this.validationService = validationService;
         this.modifyResponseService = modifyResponseService;
         this.modifyRequestService = modifyRequestService;
+        this.annualBonusService = annualBonusService;
+        this.quarterlyBonusService = quarterlyBonusService;
     }
 
     @PostMapping("/feedback")
@@ -55,28 +61,40 @@ public class MyController {
         try {
             validationService.isValid(bindingResult);
         } catch (ValidationFailedException e) {
-            response.setCode(Codes.FAILED);
-            response.setErrorCode(ErrorCodes.VALIDATION_EXCEPTION);
-            response.setErrorMessage(ErrorMessages.VALIDATION);
-            log.info("add response error data: {}", response);
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return generateErrorResponse(response, ErrorCodes.VALIDATION_EXCEPTION, ErrorMessages.VALIDATION, HttpStatus.BAD_REQUEST);
         } catch (UnsupportedCodeException e) {
-            response.setCode(Codes.FAILED);
-            response.setErrorCode(ErrorCodes.UNSUPPORTED_EXCEPTION);
-            response.setErrorMessage(ErrorMessages.UNSUPPORTED);
-            log.info("add response error data: {}", response);
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return generateErrorResponse(response, ErrorCodes.UNSUPPORTED_EXCEPTION, ErrorMessages.UNSUPPORTED, HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
-            response.setCode(Codes.FAILED);
-            response.setErrorCode(ErrorCodes.UNKNOWN_EXCEPTION);
-            response.setErrorMessage(ErrorMessages.UNKNOWN);
-            log.info("add response error data: {}", response);
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            return generateErrorResponse(response, ErrorCodes.UNKNOWN_EXCEPTION, ErrorMessages.UNKNOWN, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        response.setAnnualBonus(annualBonusService.calculate(request.getPosition(), request.getSalary(),
+                request.getBonus(), request.getWorkDays(), Year.now().getValue()));
+
+        if (request.isManager()) {
+            response.setQuarterlyBonus(quarterlyBonusService.calculate(true, request.getPosition(),
+                    request.getSalary(), request.getBonus(), request.getWorkDays(), Year.now().getValue(), getCurrentQuarter()));
         }
 
         Response modifiedResponse = modifyResponseService.modify(response);
         modifyRequestService.modify(request);
 
         return ResponseEntity.ok(modifiedResponse);
+    }
+
+    private ResponseEntity<Response> generateErrorResponse(Response response, ErrorCodes code, ErrorMessages message,
+                                                           HttpStatus status) {
+        response.setCode(Codes.FAILED);
+        response.setErrorCode(code);
+        response.setErrorMessage(message);
+        log.info("add response error data: {}", response);
+        return new ResponseEntity<>(response, status);
+    }
+
+    private int getCurrentQuarter() {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(new Date());
+        int monthValue = calendar.get(Calendar.MONTH);
+        return monthValue / 3;
     }
 }
