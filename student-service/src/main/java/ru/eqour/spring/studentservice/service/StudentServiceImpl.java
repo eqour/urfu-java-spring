@@ -1,46 +1,47 @@
 package ru.eqour.spring.studentservice.service;
 
 import org.springframework.stereotype.Service;
-import ru.eqour.spring.studentservice.dao.StudentDao;
 import ru.eqour.spring.studentservice.entity.Student;
 import ru.eqour.spring.studentservice.exception.EntityNotFoundException;
+import ru.eqour.spring.studentservice.repository.StudentRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class StudentServiceImpl implements StudentService {
 
-    private final StudentDao studentDao;
+    private final StudentRepository repository;
 
-    public StudentServiceImpl(StudentDao studentDao) {
-        this.studentDao = studentDao;
+    public StudentServiceImpl(StudentRepository repository) {
+        this.repository = repository;
     }
 
     @Override
     public List<Student> getAllStudents() {
-        return studentDao.getAllStudents();
+        return repository.findAll();
     }
 
     @Override
     public Student saveStudent(Student student) {
-        return studentDao.saveStudent(student);
+        return repository.save(student);
     }
 
     @Override
     public Student getStudent(int id) {
-        Student student = studentDao.getStudent(id);
-        if (student == null) {
+        Optional<Student> student = repository.findById(id);
+        if (student.isEmpty()) {
             throw new EntityNotFoundException("Не удалось найти студента с id '" + id + "'");
         }
-        return studentDao.getStudent(id);
+        return student.get();
     }
 
     @Override
     public void deleteStudent(int id) {
-        Student student = studentDao.getStudent(id);
-        if (student == null) {
+        Optional<Student> student = repository.findById(id);
+        if (student.isEmpty()) {
             throw new EntityNotFoundException("Не удалось найти студента с id '" + id + "'");
         }
-        studentDao.deleteStudent(id);
+        repository.deleteById(id);
     }
 }
