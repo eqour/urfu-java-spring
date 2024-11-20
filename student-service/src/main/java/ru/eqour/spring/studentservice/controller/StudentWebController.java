@@ -18,7 +18,7 @@ public class StudentWebController {
         this.studentRepository = studentRepository;
     }
 
-    @GetMapping({"/list", "/"})
+    @GetMapping("/list")
     public ModelAndView getAllStudents() {
         ModelAndView mav = new ModelAndView("list-students");
         mav.addObject("students", studentRepository.findAll());
